@@ -1,0 +1,14 @@
+opsportal = {
+    "api": {
+        "base_url": "https://example.org/lavoisier"
+    }
+}
+
+registry = {
+    "db": {
+        "name": "registry",
+        "host": "registry.example.org",
+        "user": "registry_admin",
+        "password": "registry_secret" 
+    }   
+}
