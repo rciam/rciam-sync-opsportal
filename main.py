@@ -47,8 +47,12 @@ def main():
 
 def get_remote_members():
     members = []
-    cur = requests.get(vo_members_url)
-    data = cur.json()
+    try:
+        r = requests.get(vo_members_url)
+        r.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
+    data = r.json()
 
     for index in range (len(data["result"])):
         subject = None
