@@ -1,6 +1,7 @@
 opsportal = {
     "api": {
-        "base_url": "https://example.org/lavoisier"
+        "base_url": "https://example.org",
+        "key": "exampleApiKey"
     }
 }
 
