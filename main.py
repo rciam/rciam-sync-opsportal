@@ -31,7 +31,9 @@ __copyright__ = "Copyright (c) 2017-2020 GRNET S.A."
 __license__   = "Apache Licence v2.0"
 
 vo_members_url = config.opsportal['api']['base_url'] + \
-    "/OPSCORE_vo_users_raw?accept=json"
+    "/api/vo/users/json"
+
+api_key = config.opsportal['api']['key']
 
 dsn = "dbname=" + config.registry['db']['name'] + \
     " user=" + config.registry['db']['user'] + \
@@ -47,8 +49,9 @@ def main():
 
 def get_remote_members():
     members = []
+    header = {"X-API-Key": api_key}
     try:
-        r = requests.get(vo_members_url)
+        r = requests.get(vo_members_url, headers=header)
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
         raise SystemExit(e)
