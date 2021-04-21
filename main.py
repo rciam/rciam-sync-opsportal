@@ -20,6 +20,7 @@ import json
 import psycopg2
 import psycopg2.extras
 import requests
+import utils.templates as tpl
 
 from datetime import datetime
 
@@ -40,6 +41,9 @@ dsn = "dbname=" + config.registry['db']['name'] + \
     " password=" + config.registry['db']['password'] + \
     " host=" + config.registry['db']['host'] + \
     " sslmode=require"
+
+vo_members_tbl = config.registry['db']['voms_tbl']
+
 
 def main():
     now = datetime.utcnow()
@@ -77,16 +81,16 @@ def get_remote_members():
 
 def update_local_members(members, timestamp):
     values_list = []
-    row_id = 1;
+    row_id = 1
     for member in members:
         values = (row_id, member['subject'], member['issuer'], member['vo_id'],
                   timestamp)
-        row_id += 1;
+        row_id += 1
         values_list.append(values)
 
     conn = psycopg2.connect(dsn)
     with conn:
-        sql = """CREATE TEMP TABLE voms_members_temp (
+        sql = """CREATE TEMP TABLE ${voms_tbl}_temp (
                  id integer PRIMARY KEY,
                  subject character varying(256) NOT NULL,
                  issuer character varying(256) NOT NULL,
@@ -95,43 +99,30 @@ def update_local_members(members, timestamp):
         with conn.cursor() as curs:
             curs.execute(sql)
 
-        sql = """INSERT INTO voms_members_temp (id, subject, issuer, vo_id,
+        sql = """INSERT INTO ${voms_tbl}_temp (id, subject, issuer, vo_id,
                  created) VALUES %s"""
         with conn.cursor() as curs:
             psycopg2.extras.execute_values(curs, sql, values_list,
                                            page_size=1000)
 
         # Remove duplicate remote membership info
-        sql = """DELETE FROM voms_members_temp
+        sql = """DELETE FROM ${voms_tbl}_temp
                  WHERE id IN (SELECT id FROM (
                  SELECT id, ROW_NUMBER() OVER (
                  partition BY subject, issuer, vo_id ORDER BY id) AS rnum 
-                 FROM voms_members_temp) t WHERE t.rnum > 1)"""
+                 FROM ${voms_tbl}_temp) t WHERE t.rnum > 1)"""
         with conn.cursor() as curs:
             curs.execute(sql)
 
         # Add new members
-        sql = """INSERT INTO voms_members (subject, issuer, vo_id) 
-                 SELECT curr.subject, curr.issuer, curr.vo_id
-                 FROM voms_members_temp curr LEFT JOIN voms_members prev 
-                 ON curr.subject=prev.subject 
-                 AND curr.issuer=prev.issuer 
-                 AND curr.vo_id=prev.vo_id WHERE prev.subject IS NULL"""
+        insert_sql = tpl.db_insert.substitute(tpl.defaults_db_insert, voms_tbl=vo_members_tbl)
         with conn.cursor() as curs:
-            curs.execute(sql)
+            curs.execute(insert_sql)
 
         # Remove stale members
-        sql = """DELETE FROM voms_members t1 USING (
-                 SELECT prev.subject, prev.issuer, prev.vo_id
-                 FROM voms_members prev LEFT JOIN voms_members_temp curr 
-                 ON curr.subject=prev.subject 
-                 AND curr.issuer=prev.issuer 
-                 AND curr.vo_id=prev.vo_id WHERE curr.subject IS NULL) sq
-                 WHERE sq.subject=t1.subject
-                 AND sq.issuer=t1.issuer
-                 AND sq.vo_id=t1.vo_id"""
+        del_sql = tpl.db_delete.substitute(tpl.defaults_db_delete, voms_tbl=vo_members_tbl)
         with conn.cursor() as curs:
-            curs.execute(sql)
+            curs.execute(del_sql)
 
     conn.close()
 
