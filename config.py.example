@@ -10,6 +10,7 @@ registry = {
         "name": "registry",
         "host": "registry.example.org",
         "user": "registry_admin",
-        "password": "registry_secret" 
-    }   
+        "password": "registry_secret",
+        "voms_tbl": "voms_members"
+    }
 }
