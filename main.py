@@ -90,29 +90,19 @@ def update_local_members(members, timestamp):
 
     conn = psycopg2.connect(dsn)
     with conn:
-        sql = """CREATE TEMP TABLE ${voms_tbl}_temp (
-                 id integer PRIMARY KEY,
-                 subject character varying(256) NOT NULL,
-                 issuer character varying(256) NOT NULL,
-                 vo_id character varying(256) NOT NULL,
-                 created timestamp without time zone)"""
+        create_tmp_sql = tpl.tbl_tmp_create.substitute(tpl.defaults_tbl_tmp_create, voms_tbl=vo_members_tbl)
         with conn.cursor() as curs:
-            curs.execute(sql)
+            curs.execute(create_tmp_sql)
 
-        sql = """INSERT INTO ${voms_tbl}_temp (id, subject, issuer, vo_id,
-                 created) VALUES %s"""
+        insert_tmp_sql = tpl.tbl_tmp_insert.substitute(tpl.defaults_tbl_tmp_insert, voms_tbl=vo_members_tbl)
         with conn.cursor() as curs:
-            psycopg2.extras.execute_values(curs, sql, values_list,
+            psycopg2.extras.execute_values(curs, insert_tmp_sql, values_list,
                                            page_size=1000)
 
         # Remove duplicate remote membership info
-        sql = """DELETE FROM ${voms_tbl}_temp
-                 WHERE id IN (SELECT id FROM (
-                 SELECT id, ROW_NUMBER() OVER (
-                 partition BY subject, issuer, vo_id ORDER BY id) AS rnum 
-                 FROM ${voms_tbl}_temp) t WHERE t.rnum > 1)"""
+        delete_tmp_sql = tpl.tbl_tmp_delete.substitute(tpl.defaults_tbl_tmp_delete, voms_tbl=vo_members_tbl)
         with conn.cursor() as curs:
-            curs.execute(sql)
+            curs.execute(delete_tmp_sql)
 
         # Add new members
         insert_sql = tpl.db_insert.substitute(tpl.defaults_db_insert, voms_tbl=vo_members_tbl)
