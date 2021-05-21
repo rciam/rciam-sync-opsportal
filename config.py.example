@@ -1,0 +1,16 @@
+opsportal = {
+    "api": {
+        "base_url": "https://example.org",
+        "key": "exampleApiKey"
+    }
+}
+
+registry = {
+    "db": {
+        "name": "registry",
+        "host": "registry.example.org",
+        "user": "registry_admin",
+        "password": "registry_secret",
+        "voms_tbl": "voms_members"
+    }
+}
